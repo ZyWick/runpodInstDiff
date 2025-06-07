@@ -4,30 +4,37 @@ import torch
 from diffusers import StableDiffusionINSTDIFFPipeline
 from io import BytesIO
 import base64
-
-# Use mounted volume to store model cache
-os.environ["HF_HOME"] = "/workspace/huggingface"
-
-# Optional: Check free space for debugging
 import shutil
-total, used, free = shutil.disk_usage("/")
-print(f"Disk - Total: {total // (2**20)} MB | Used: {used // (2**20)} MB | Free: {free // (2**20)} MB")
 
-# Use mounted volume to cache model
-model_dir = "/models/instancediffusion_sd15"
+# Define volume paths
+VOLUME_PATH = "/runpod-volume"
+HF_CACHE_DIR = os.path.join(VOLUME_PATH, "huggingface")
+MODEL_CACHE_DIR = os.path.join(VOLUME_PATH, "models", "instancediffusion_sd15")
 
-if not os.path.exists(model_dir):
-    print("Downloading model to /models...")
+# Use volume for HuggingFace cache
+os.environ["HF_HOME"] = HF_CACHE_DIR
+
+# Optional: Check volume space
+total, used, free = shutil.disk_usage(VOLUME_PATH)
+print(f"Volume - Total: {total // (2**20)} MB | Used: {used // (2**20)} MB | Free: {free // (2**20)} MB")
+
+# Ensure necessary directories exist
+os.makedirs(HF_CACHE_DIR, exist_ok=True)
+os.makedirs(MODEL_CACHE_DIR, exist_ok=True)
+
+# Load or download model
+if not os.listdir(MODEL_CACHE_DIR):
+    print("Downloading model to volume...")
     pipe = StableDiffusionINSTDIFFPipeline.from_pretrained(
         "kyeongry/instancediffusion_sd15",
         torch_dtype=torch.float16,
         use_safetensors=True,
-        cache_dir=model_dir
+        cache_dir=MODEL_CACHE_DIR
     )
 else:
-    print("Loading model from /models cache...")
+    print("Loading model from volume cache...")
     pipe = StableDiffusionINSTDIFFPipeline.from_pretrained(
-        model_dir,
+        MODEL_CACHE_DIR,
         torch_dtype=torch.float16,
         use_safetensors=True
     )
@@ -65,6 +72,5 @@ def handler(event):
     except Exception as e:
         return {"error": str(e)}
 
-
-# Start the Serverless function when the script is run
+# Start the Serverless function
 runpod.serverless.start({"handler": handler})
