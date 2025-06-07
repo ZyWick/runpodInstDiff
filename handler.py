@@ -23,7 +23,7 @@ os.makedirs(HF_CACHE_DIR, exist_ok=True)
 os.makedirs(MODEL_CACHE_DIR, exist_ok=True)
 
 # Load or download model
-if not os.listdir(MODEL_CACHE_DIR):
+if not os.path.exists(os.path.join(MODEL_CACHE_DIR, "model_index.json")):
     print("Downloading model to volume...")
     pipe = StableDiffusionINSTDIFFPipeline.from_pretrained(
         "kyeongry/instancediffusion_sd15",
